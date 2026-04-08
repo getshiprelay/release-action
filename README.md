@@ -31,7 +31,7 @@ jobs:
 
 | Input | Required | Default | Description |
 |---|---|---|---|
-| `api-key` | Yes | — | Your ShipRelay API key (from Settings → API) |
+| `api-key` | Yes | — | Your ShipRelay API key (from Settings → Widget Installation) |
 | `audience` | No | `user` | `developer`, `user`, `executive`, or `marketing` |
 | `auto-publish` | No | `false` | `true` publishes automatically, `false` leaves a draft |
 
@@ -72,7 +72,7 @@ jobs:
 
 1. Create your ShipRelay account.
 2. Connect your repository in the dashboard.
-3. Copy your project API key from Settings.
+3. Copy your project API key from Settings → Widget Installation.
 4. Add `SHIPRELAY_API_KEY` to your repo secrets.
 5. Push a tag like `v1.0.0`.
 

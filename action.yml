@@ -6,7 +6,7 @@ branding:
 
 inputs:
   api-key:
-    description: "Your ShipRelay API key (from Settings → API)"
+    description: "Your ShipRelay API key (from Settings → Widget Installation)"
     required: true
   audience:
     description: "Changelog audience tone: developer, user, executive, marketing"
