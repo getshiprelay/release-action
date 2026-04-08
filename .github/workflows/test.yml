@@ -1,0 +1,35 @@
+name: Test Release Action
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate action metadata
+        run: |
+          test -f action.yml
+          grep -q "runs:" action.yml
+          grep -q "main: \"index.js\"" action.yml
+
+      - name: Validate action runtime script
+        run: |
+          node --check index.js
+
+      - name: Smoke test expected tag-guard failure
+        id: smoke
+        continue-on-error: true
+        uses: ./
+        with:
+          api-key: sr_invalid_key_for_smoke
+
+      - name: Assert smoke test failed clearly
+        if: steps.smoke.outcome != 'failure'
+        run: |
+          echo "Expected smoke test to fail on non-tag workflow context"
+          exit 1

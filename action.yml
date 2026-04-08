@@ -1,0 +1,30 @@
+name: "ShipRelay — AI Release Notes"
+description: "Generate and publish AI-powered release notes from your git tags"
+branding:
+  icon: "send"
+  color: "blue"
+
+inputs:
+  api-key:
+    description: "Your ShipRelay API key (from Settings → API)"
+    required: true
+  audience:
+    description: "Changelog audience tone: developer, user, executive, marketing"
+    required: false
+    default: "user"
+  auto-publish:
+    description: "Publish immediately (true) or create draft for review (false)"
+    required: false
+    default: "false"
+
+outputs:
+  draft-url:
+    description: "URL to review the draft in ShipRelay dashboard"
+  changelog-url:
+    description: "URL of the published changelog (only if auto-publish is true)"
+  version:
+    description: "The version tag that was processed"
+
+runs:
+  using: "node20"
+  main: "index.js"
