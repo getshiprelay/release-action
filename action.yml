@@ -12,6 +12,9 @@ inputs:
     description: "Changelog audience tone: developer, user, executive, marketing"
     required: false
     default: "user"
+  repository:
+    description: "Repository in owner/repo format. Defaults to the current repository."
+    required: false
   auto-publish:
     description: "Publish immediately (true) or create draft for review (false)"
     required: false

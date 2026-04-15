@@ -33,6 +33,7 @@ jobs:
 |---|---|---|---|
 | `api-key` | Yes | — | Your ShipRelay API key (from Settings → Widget Installation) |
 | `audience` | No | `user` | `developer`, `user`, `executive`, or `marketing` |
+| `repository` | No | `${{ github.repository }}` | Repository in `owner/repo` format |
 | `auto-publish` | No | `false` | `true` publishes automatically, `false` leaves a draft |
 
 ## Outputs

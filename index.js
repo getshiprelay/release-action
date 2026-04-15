@@ -76,6 +76,7 @@ async function waitForDraftReady(baseUrl, apiKey, draftId) {
 async function run() {
   const apiKey = getInput("api-key");
   const audience = getInput("audience", "user") || "user";
+  const repositoryInput = getInput("repository");
   const autoPublish = toBoolean(getInput("auto-publish", "false"));
   const baseUrl = (process.env.SHIPRELAY_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
 
@@ -84,7 +85,7 @@ async function run() {
   }
 
   const ref = process.env.GITHUB_REF;
-  const repository = process.env.GITHUB_REPOSITORY;
+  const repository = repositoryInput || process.env.GITHUB_REPOSITORY;
   const tag = getTagFromRef(ref);
 
   if (!tag) {
