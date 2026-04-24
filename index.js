@@ -1,8 +1,21 @@
 const DEFAULT_BASE_URL = "https://shiprelay.io";
 const POLL_INTERVAL_MS = 5000;
 const POLL_TIMEOUT_MS = 120000;
+const FETCH_TIMEOUT_MS = 30000;
 const ALLOWED_AUDIENCES = new Set(["developer", "user", "executive", "all"]);
 const REPOSITORY_PATTERN = /^[^/]+\/[^/]+$/;
+const crypto = require("crypto");
+
+const core = {
+  setSecret(value) {
+    if (!value) return;
+    process.stdout.write(`::add-mask::${String(value)}\n`);
+  },
+  setFailed(message) {
+    console.error(`❌ ${message}`);
+    process.exit(1);
+  },
+};
 
 function getInput(name, fallback = "") {
   const envKeyUnderscore = `INPUT_${name.replace(/-/g, "_").toUpperCase()}`;
@@ -26,18 +39,20 @@ function setOutput(name, value) {
   const outputFile = process.env.GITHUB_OUTPUT;
   if (!outputFile) return;
   const sanitizedValue = sanitizeOutputValue(value);
-  const delimiter = "SHIPRELAY_EOF";
+  const delimiter = `SHIPRELAY_${crypto.randomUUID()}`;
   const block = `${name}<<${delimiter}\n${sanitizedValue}\n${delimiter}\n`;
   require("fs").appendFileSync(outputFile, block);
 }
 
 function fail(message) {
-  console.error(`❌ ${message}`);
-  process.exit(1);
+  core.setFailed(message);
 }
 
 async function apiRequest(url, options = {}) {
-  const response = await fetch(url, options);
+  const response = await fetch(url, {
+    ...options,
+    signal: options.signal || AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
 
   if (!response.ok) {
     throw new Error(`ShipRelay API error (HTTP ${response.status})`);
@@ -58,7 +73,7 @@ function resolveBaseUrl() {
   }
 
   if (!configuredBaseUrl.startsWith("https://")) {
-    fail("Invalid SHIPRELAY_BASE_URL. It must start with https://");
+    fail("SHIPRELAY_BASE_URL must use HTTPS to protect API credentials");
   }
 
   return configuredBaseUrl;
@@ -99,6 +114,7 @@ async function waitForDraftReady(baseUrl, apiKey, draftId) {
 
 async function run() {
   const apiKey = getInput("api-key");
+  core.setSecret(apiKey);
   const audience = getInput("audience", "user") || "user";
   const repositoryInput = getInput("repository");
   const autoPublish = toBoolean(getInput("auto-publish", "false"));
@@ -185,6 +201,17 @@ async function run() {
     console.log(`📄 View: ${changelogUrl}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const timeoutMessage =
+      error && typeof error === "object" && "name" in error && error.name === "TimeoutError";
+
+    if (timeoutMessage || message.toLowerCase().includes("timeout")) {
+      fail("ShipRelay API request timed out (30s). Check network connectivity and try again.");
+    }
+
+    const statusMatch = message.match(/ShipRelay API error \(HTTP (\d{3})\)/i);
+    if (statusMatch) {
+      fail(`ShipRelay API error (HTTP ${statusMatch[1]}). Check your API key and repository settings.`);
+    }
 
     if (message.toLowerCase().includes("api key")) {
       fail("API key invalid");
@@ -198,7 +225,7 @@ async function run() {
       fail("Tag not found");
     }
 
-    fail(message);
+    fail("ShipRelay action failed. Check inputs and repository configuration.");
   }
 }
 
