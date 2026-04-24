@@ -9,7 +9,7 @@ inputs:
     description: "Your ShipRelay API key (from Settings → Widget Installation)"
     required: true
   audience:
-    description: "Changelog audience tone: developer, user, executive, marketing"
+    description: "Changelog audience tone: developer, user, executive, all"
     required: false
     default: "user"
   repository:

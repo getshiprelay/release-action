@@ -1,6 +1,8 @@
-const DEFAULT_BASE_URL = "https://app.shiprelay.io";
+const DEFAULT_BASE_URL = "https://shiprelay.io";
 const POLL_INTERVAL_MS = 5000;
 const POLL_TIMEOUT_MS = 120000;
+const ALLOWED_AUDIENCES = new Set(["developer", "user", "executive", "all"]);
+const REPOSITORY_PATTERN = /^[^/]+\/[^/]+$/;
 
 function getInput(name, fallback = "") {
   const envKeyUnderscore = `INPUT_${name.replace(/-/g, "_").toUpperCase()}`;
@@ -16,11 +18,17 @@ function toBoolean(value) {
   return String(value).toLowerCase() === "true";
 }
 
+function sanitizeOutputValue(value) {
+  return String(value).replace(/[\r\n]+/g, " ").trim();
+}
+
 function setOutput(name, value) {
   const outputFile = process.env.GITHUB_OUTPUT;
   if (!outputFile) return;
-  const line = `${name}=${String(value)}\n`;
-  require("fs").appendFileSync(outputFile, line);
+  const sanitizedValue = sanitizeOutputValue(value);
+  const delimiter = "SHIPRELAY_EOF";
+  const block = `${name}<<${delimiter}\n${sanitizedValue}\n${delimiter}\n`;
+  require("fs").appendFileSync(outputFile, block);
 }
 
 function fail(message) {
@@ -30,14 +38,30 @@ function fail(message) {
 
 async function apiRequest(url, options = {}) {
   const response = await fetch(url, options);
-  const body = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    const error = body?.error || `HTTP ${response.status}`;
-    throw new Error(error);
+    throw new Error(`ShipRelay API error (HTTP ${response.status})`);
   }
 
-  return body;
+  return response.json().catch(() => ({}));
+}
+
+function resolveBaseUrl() {
+  const configuredBaseUrl = (process.env.SHIPRELAY_BASE_URL || "").trim();
+
+  if (!configuredBaseUrl) {
+    return DEFAULT_BASE_URL;
+  }
+
+  if (configuredBaseUrl !== DEFAULT_BASE_URL) {
+    console.warn("⚠️ Custom SHIPRELAY_BASE_URL detected. Only trusted HTTPS URLs should be used.");
+  }
+
+  if (!configuredBaseUrl.startsWith("https://")) {
+    fail("Invalid SHIPRELAY_BASE_URL. It must start with https://");
+  }
+
+  return configuredBaseUrl;
 }
 
 function getTagFromRef(ref) {
@@ -78,10 +102,14 @@ async function run() {
   const audience = getInput("audience", "user") || "user";
   const repositoryInput = getInput("repository");
   const autoPublish = toBoolean(getInput("auto-publish", "false"));
-  const baseUrl = (process.env.SHIPRELAY_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
+  const baseUrl = resolveBaseUrl().replace(/\/$/, "");
 
   if (!apiKey) {
     fail("API key invalid");
+  }
+
+  if (!ALLOWED_AUDIENCES.has(audience)) {
+    fail("Invalid audience. Allowed values: developer, user, executive, all");
   }
 
   const ref = process.env.GITHUB_REF;
@@ -94,6 +122,10 @@ async function run() {
 
   if (!repository) {
     fail("Missing GitHub repository context.");
+  }
+
+  if (!REPOSITORY_PATTERN.test(repository)) {
+    fail("Invalid repository format. Expected owner/repo.");
   }
 
   setOutput("version", tag);
